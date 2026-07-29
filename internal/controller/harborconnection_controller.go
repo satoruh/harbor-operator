@@ -36,6 +36,11 @@ type HarborConnectionReconciler struct {
 // +kubebuilder:rbac:groups=harbor.satoruh.org,resources=harborconnections,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=harbor.satoruh.org,resources=harborconnections/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=harbor.satoruh.org,resources=harborconnections/finalizers,verbs=update
+// Secrets and ConfigMaps are read uncached (see cmd/main.go), so get is
+// sufficient. Scoped to the operator's own namespace: the reference types
+// carry no namespace field, and this grant is the enforcement point for that.
+// +kubebuilder:rbac:groups="",resources=secrets;configmaps,verbs=get,namespace=system
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
