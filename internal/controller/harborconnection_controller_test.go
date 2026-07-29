@@ -32,16 +32,12 @@ import (
 
 var _ = Describe("HarborConnection Controller", func() {
 	Context("When reconciling a resource", func() {
-		const (
-			resourceName      = "test-resource"
-			resourceNamespace = "default"
-		)
+		const resourceName = "test-resource"
 
 		ctx := context.Background()
 
 		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: resourceNamespace,
+			Name: resourceName,
 		}
 		harborconnection := &harborv1alpha1.HarborConnection{}
 
@@ -51,10 +47,14 @@ var _ = Describe("HarborConnection Controller", func() {
 			if err != nil && errors.IsNotFound(err) {
 				resource := &harborv1alpha1.HarborConnection{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: resourceNamespace,
+						Name: resourceName,
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: harborv1alpha1.HarborConnectionSpec{
+						BaseURL: "https://harbor.example.invalid",
+						CredentialsRef: harborv1alpha1.SecretKeyReference{
+							Name: "harbor-credentials",
+						},
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}

@@ -54,7 +54,12 @@ var _ = Describe("HarborProject Controller", func() {
 						Name:      resourceName,
 						Namespace: resourceNamespace,
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: harborv1alpha1.HarborProjectSpec{
+						ConnectionRef: harborv1alpha1.ConnectionReference{
+							Name: "test-connection",
+						},
+						ProjectName: "test-project",
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}

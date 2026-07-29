@@ -21,47 +21,95 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// HarborConnectionSpec defines the desired state of HarborConnection
+// HarborConnectionSpec describes how to reach a Harbor instance.
 type HarborConnectionSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	// The following markers will use OpenAPI v3 schema to validate the value
-	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
+	// BaseURL is the root URL of the Harbor API, without a trailing slash
+	// and without the /api/v2.0 path (for example https://harbor.example.com).
+	// +kubebuilder:validation:Pattern=`^https?://`
+	// +kubebuilder:validation:MaxLength=2048
+	BaseURL string `json:"baseURL"`
 
-	// foo is an example field of HarborConnection. Edit harborconnection_types.go to remove/update
+	// CredentialsRef selects the Secret holding the Harbor username and
+	// password. The Secret must live in the operator's own namespace and
+	// carry the label harbor.satoruh.org/credentials=true.
+	CredentialsRef SecretKeyReference `json:"credentialsRef"`
+
+	// CABundleRef selects a ConfigMap containing a PEM-encoded CA bundle used
+	// to verify the Harbor certificate. Required when Harbor is served with a
+	// certificate that is not signed by a system-trusted CA.
 	// +optional
-	Foo *string `json:"foo,omitempty"`
+	CABundleRef *ConfigMapKeyReference `json:"caBundleRef,omitempty"`
+
+	// InsecureSkipVerify disables TLS certificate verification.
+	// Intended for development only; prefer CABundleRef.
+	// +optional
+	// +kubebuilder:default=false
+	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
+
+	// SyncPeriod is how often HarborProject resources bound to this connection
+	// are reconciled against Harbor to detect drift. Harbor cannot be watched,
+	// so this polling interval bounds how long a manual change persists.
+	// +optional
+	// +kubebuilder:default="10m"
+	// +kubebuilder:validation:XValidation:rule="duration(self) >= duration('30s')",message="syncPeriod must be at least 30s"
+	SyncPeriod *metav1.Duration `json:"syncPeriod,omitempty"`
 }
 
-// HarborConnectionStatus defines the observed state of HarborConnection.
+// SecretKeyReference points at a Secret in the operator's namespace.
+// The namespace is deliberately not configurable: it bounds which Secrets the
+// controller can be directed to read.
+type SecretKeyReference struct {
+	// Name of the Secret.
+	Name string `json:"name"`
+
+	// UsernameKey is the key holding the Harbor username. For a robot account
+	// this is the full name including the robot$ prefix.
+	// +optional
+	// +kubebuilder:default=username
+	UsernameKey string `json:"usernameKey,omitempty"`
+
+	// PasswordKey is the key holding the Harbor password or robot token.
+	// +optional
+	// +kubebuilder:default=password
+	PasswordKey string `json:"passwordKey,omitempty"`
+}
+
+// ConfigMapKeyReference points at a ConfigMap in the operator's namespace.
+type ConfigMapKeyReference struct {
+	// Name of the ConfigMap.
+	Name string `json:"name"`
+
+	// Key holding the PEM-encoded certificate bundle.
+	// +optional
+	// +kubebuilder:default="ca.crt"
+	Key string `json:"key,omitempty"`
+}
+
+// HarborConnectionStatus reports reachability of the Harbor instance.
 type HarborConnectionStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// For Kubernetes API conventions, see:
-	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
-
-	// conditions represent the current state of the HarborConnection resource.
-	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
-	//
-	// Standard condition types include:
-	// - "Available": the resource is fully functional
-	// - "Progressing": the resource is being created or updated
-	// - "Degraded": the resource failed to reach or maintain its desired state
-	//
-	// The status of each condition is one of True, False, or Unknown.
+	// Conditions represent the current state of the HarborConnection.
 	// +listType=map
 	// +listMapKey=type
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// ObservedGeneration is the .metadata.generation the controller last acted on.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// HarborVersion is reported by the Harbor instance at the last successful probe.
+	// +optional
+	HarborVersion string `json:"harborVersion,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:resource:scope=Cluster,categories=harbor
+// +kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.baseURL`
+// +kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.harborVersion`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].message`,priority=1
 
 // HarborConnection is the Schema for the harborconnections API
 type HarborConnection struct {

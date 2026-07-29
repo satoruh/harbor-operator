@@ -21,46 +21,103 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // HarborProjectSpec defines the desired state of HarborProject
 type HarborProjectSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	// The following markers will use OpenAPI v3 schema to validate the value
-	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
+	// ConnectionRef selects the HarborConnection describing the target Harbor.
+	//
+	// Immutable: pointing an existing resource at a different Harbor would leave
+	// the project behind on the original instance while status.projectID still
+	// refers to it.
+	//
+	// To move a project to a different Harbor, delete and recreate this resource.
+	// Set deletionPolicy to Orphan first, otherwise deletion removes the project
+	// from the original Harbor.
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="connectionRef is immutable"
+	ConnectionRef ConnectionReference `json:"connectionRef"`
 
-	// foo is an example field of HarborProject. Edit harborproject_types.go to remove/update
+	// ProjectName is the project name in Harbor. Immutable once created.
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=255
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]+(?:[._-][a-z0-9]+)*$`
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="projectName is immutable"
+	ProjectName string `json:"projectName"`
+
+	// Public controls project visibility. When unset the controller does not
+	// manage this attribute and leaves whatever Harbor has.
 	// +optional
-	Foo *string `json:"foo,omitempty"`
+	Public *bool `json:"public,omitempty"`
+
+	// AdoptExisting allows the controller to take ownership of a project that
+	// already exists in Harbor. Without it, finding a project with the same name
+	// is an error.
+	//
+	// This is only evaluated while the resource is not yet bound to a Harbor
+	// project (status.projectID unset). Once bound, clearing this field does not
+	// release the project; delete the resource with deletionPolicy Orphan instead.
+	// +optional
+	// +kubebuilder:default=false
+	AdoptExisting bool `json:"adoptExisting,omitempty"`
+
+	// DeletionPolicy decides what happens to the Harbor project when this
+	// resource is deleted. Orphan leaves the project in Harbor; Delete removes it.
+	//
+	// Note that recreating a resource is the only way to change connectionRef or
+	// projectName, both of which are immutable. Switch to Orphan before deleting
+	// if the Harbor project should survive.
+	// +optional
+	// +kubebuilder:default=Orphan
+	DeletionPolicy DeletionPolicy `json:"deletionPolicy,omitempty"`
+}
+
+// +kubebuilder:validation:Enum=Delete;Orphan
+type DeletionPolicy string
+
+const (
+	DeletionPolicyDelete DeletionPolicy = "Delete"
+	DeletionPolicyOrphan DeletionPolicy = "Orphan"
+)
+
+// ConnectionReference selects a HarborConnection by name. HarborConnection is
+// cluster-scoped, so no namespace is needed.
+type ConnectionReference struct {
+	Name string `json:"name"`
 }
 
 // HarborProjectStatus defines the observed state of HarborProject.
 type HarborProjectStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// For Kubernetes API conventions, see:
-	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
-
-	// conditions represent the current state of the HarborProject resource.
-	// Each condition has a unique type and reflects the status of a specific aspect of the resource.
-	//
-	// Standard condition types include:
-	// - "Available": the resource is fully functional
-	// - "Progressing": the resource is being created or updated
-	// - "Degraded": the resource failed to reach or maintain its desired state
-	//
-	// The status of each condition is one of True, False, or Unknown.
+	// Conditions represent the current state of the HarborProject.
 	// +listType=map
 	// +listMapKey=type
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// ObservedGeneration is the .metadata.generation the controller last acted on.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// ProjectID is the numeric ID of the project in Harbor. It is the primary
+	// handle for reconciliation; when unset the controller falls back to a
+	// lookup by name.
+	// +optional
+	ProjectID *int64 `json:"projectID,omitempty"`
+
+	// RepositoryCount is the number of repositories in the project, used to
+	// explain why deletion is blocked.
+	// +optional
+	RepositoryCount *int64 `json:"repositoryCount,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:categories=harbor
+// +kubebuilder:printcolumn:name="Project",type=string,JSONPath=`.spec.projectName`
+// +kubebuilder:printcolumn:name="ID",type=integer,JSONPath=`.status.projectID`
+// +kubebuilder:printcolumn:name="Public",type=boolean,JSONPath=`.spec.public`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+// +kubebuilder:printcolumn:name="Connection",type=string,JSONPath=`.spec.connectionRef.name`,priority=1
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].message`,priority=1
+// +kubebuilder:printcolumn:name="Deletion",type=string,JSONPath=`.spec.deletionPolicy`,priority=1
 
 // HarborProject is the Schema for the harborprojects API
 type HarborProject struct {
