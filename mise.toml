@@ -1,3 +1,5 @@
 [tools]
 go = "latest"
 kubebuilder = "latest"
+kind = "latest"
+helm = "latest"
