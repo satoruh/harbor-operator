@@ -6,6 +6,7 @@ metadata:
 rules:
 - apiGroups:
   - ""
+  - events.k8s.io
   resources:
   - events
   verbs:
@@ -15,7 +16,6 @@ rules:
   - harbor.satoruh.org
   resources:
   - harborconnections
-  - harborprojects
   verbs:
   - create
   - delete
@@ -28,18 +28,26 @@ rules:
   - harbor.satoruh.org
   resources:
   - harborconnections/finalizers
-  - harborprojects/finalizers
+  - harborprojects/status
   verbs:
   - update
 - apiGroups:
   - harbor.satoruh.org
   resources:
   - harborconnections/status
-  - harborprojects/status
   verbs:
   - get
   - patch
   - update
+- apiGroups:
+  - harbor.satoruh.org
+  resources:
+  - harborprojects
+  verbs:
+  - get
+  - list
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
