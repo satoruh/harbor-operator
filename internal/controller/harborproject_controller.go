@@ -46,8 +46,9 @@ const (
 	// that a change to a HarborConnection can enqueue the projects using it.
 	connectionRefIndex = "spec.connectionRef.name"
 
-	// defaultSyncPeriod applies when the connection carries no syncPeriod. The
-	// CRD default normally fills it in; this covers objects built in tests.
+	// defaultSyncPeriod is the fallback interval: the connection could not be
+	// read, or it carries no syncPeriod because it was built in code rather
+	// than defaulted by the CRD.
 	defaultSyncPeriod = 10 * time.Minute
 )
 
