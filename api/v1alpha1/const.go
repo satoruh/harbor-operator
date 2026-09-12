@@ -40,5 +40,35 @@ const (
 
 // Condition reasons
 const (
+	// ReasonSynced means the Harbor project matches the spec.
 	ReasonSynced = "Synced"
+
+	// ReasonConnectionUnavailable means the referenced HarborConnection is
+	// missing or cannot be turned into a usable client.
+	ReasonConnectionUnavailable = "ConnectionUnavailable"
+
+	// ReasonCredentialsInvalid means the credentials Secret is missing, lacks
+	// the opt-in label, or does not carry the expected keys.
+	ReasonCredentialsInvalid = "CredentialsInvalid"
+
+	// ReasonProjectInaccessible means Harbor will not show the project. It
+	// covers both a deleted project and a permission problem: Harbor answers
+	// 403 for either and does not distinguish them.
+	ReasonProjectInaccessible = "ProjectInaccessible"
+
+	// ReasonAdoptionRefused means a project with the same name already exists
+	// and spec.adoptExisting is not set.
+	ReasonAdoptionRefused = "AdoptionRefused"
+
+	// ReasonInvalidProjectName means Harbor rejected the name. Retrying does
+	// not help; the spec has to change.
+	ReasonInvalidProjectName = "InvalidProjectName"
+
+	// ReasonDeletionBlocked means the project still holds repositories, so it
+	// cannot be deleted. The resource stays until they are gone.
+	ReasonDeletionBlocked = "DeletionBlocked"
+
+	// ReasonHarborError means the Harbor API failed in a way that may resolve
+	// on its own.
+	ReasonHarborError = "HarborError"
 )

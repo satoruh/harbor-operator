@@ -65,6 +65,14 @@ spec:
           - --health-probe-bind-address=:8081
         image: controller:latest
         name: manager
+        env:
+        # The namespace credential Secrets are read from. The controller reads
+        # nothing outside it, so this is what bounds which Secrets a
+        # HarborConnection can name.
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         ports:
         - containerPort: 8081
           name: health

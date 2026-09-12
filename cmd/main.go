@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/clientcmd"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -52,6 +53,29 @@ func init() {
 
 	utilruntime.Must(harborv1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
+}
+
+// operatorNamespace reports the namespace credentials are read from. It is the
+// boundary that keeps a HarborConnection author from naming a Secret elsewhere,
+// so it is resolved from the environment rather than from any API object.
+//
+// In a Pod the Downward API sets POD_NAMESPACE (see config/manager/manager.yaml).
+// `make run` has no Pod, so the namespace of the current kubeconfig context is
+// used there; that is the namespace the developer's kubectl already points at.
+func operatorNamespace() (string, error) {
+	if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
+		return ns, nil
+	}
+
+	ns, _, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		clientcmd.NewDefaultClientConfigLoadingRules(), nil).Namespace()
+	if err != nil {
+		return "", err
+	}
+	// Without a kubeconfig this yields "default". In a Pod missing the env that
+	// is wrong, but the Role is bound in the operator's namespace only, so the
+	// reads fail rather than reaching Secrets the operator should not see.
+	return ns, nil
 }
 
 // nolint:gocyclo
@@ -156,6 +180,13 @@ func main() {
 		metricsServerOptions.KeyName = metricsCertKey
 	}
 
+	namespace, err := operatorNamespace()
+	if err != nil {
+		setupLog.Error(err, "Failed to determine the operator namespace")
+		os.Exit(1)
+	}
+	setupLog.Info("Reading credentials from a single namespace", "namespace", namespace)
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:  scheme,
 		Metrics: metricsServerOptions,
@@ -207,8 +238,10 @@ func main() {
 		os.Exit(1)
 	}
 	if err := (&controller.HarborProjectReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		Recorder:  mgr.GetEventRecorderFor("harborproject-controller"),
+		Namespace: namespace,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "harborproject")
 		os.Exit(1)
