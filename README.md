@@ -35,6 +35,19 @@ Harbor と突き合わせる。Harbor 側で手で変更した内容が戻るま
 
 ## インストール
 
+タグ（`v*`）を push すると、GitHub Actions が `ghcr.io/satoruh/harbor-operator:<タグ>` に
+イメージを上げ、そのタグを埋め込んだ `install.yaml`（CRD と controller 一式）を
+GitHub Release に添付する。
+
+```sh
+kubectl apply -f https://github.com/satoruh/harbor-operator/releases/download/<タグ>/install.yaml
+```
+
+GitOps で配る場合は、この `install.yaml` を配布用のリポジトリに置いて ArgoCD などから
+適用する。イメージはタグで固定されているので、リリースを差し替えない限り中身は動かない。
+
+手元のビルドから入れる場合:
+
 ```sh
 make install                                        # CRD だけ
 make deploy IMG=<registry>/harbor-operator:<tag>    # controller 本体
