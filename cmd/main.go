@@ -231,8 +231,9 @@ func main() {
 	}
 
 	if err := (&controller.HarborConnectionReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		Namespace: namespace,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "harborconnection")
 		os.Exit(1)

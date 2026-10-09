@@ -5,7 +5,6 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - ""
   - events.k8s.io
   resources:
   - events
@@ -17,27 +16,15 @@ rules:
   resources:
   - harborconnections
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - harbor.satoruh.org
   resources:
-  - harborconnections/finalizers
+  - harborconnections/status
   - harborprojects/status
   verbs:
-  - update
-- apiGroups:
-  - harbor.satoruh.org
-  resources:
-  - harborconnections/status
-  verbs:
-  - get
-  - patch
   - update
 - apiGroups:
   - harbor.satoruh.org
