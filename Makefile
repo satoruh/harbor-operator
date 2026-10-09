@@ -67,27 +67,23 @@ test: manifests generate fmt vet setup-envtest ## Run tests.
 # The default setup assumes Kind is pre-installed and builds/loads the Manager Docker image locally.
 # kubectl kuberc is disabled by default for test isolation; enable with:
 # - KUBECTL_KUBERC=true
-# CertManager is installed by default; skip with:
-# - CERT_MANAGER_INSTALL_SKIP=true
 KIND_CLUSTER ?= harbor-operator-test-e2e
+# Differs from the development Harbor's port so that both clusters can be up
+# at the same time.
+E2E_HARBOR_NODE_PORT ?= 30003
+E2E_HARBOR_URL = http://127.0.0.1:$(E2E_HARBOR_NODE_PORT)
+E2E_HARBOR_PASSWORD ?= Harbor12345
 
 .PHONY: setup-test-e2e
-setup-test-e2e: ## Set up a Kind cluster for e2e tests if it does not exist
-	@command -v $(KIND) >/dev/null 2>&1 || { \
-		echo "Kind is not installed. Please install Kind manually."; \
-		exit 1; \
-	}
-	@case "$$($(KIND) get clusters)" in \
-		*"$(KIND_CLUSTER)"*) \
-			echo "Kind cluster '$(KIND_CLUSTER)' already exists. Skipping creation." ;; \
-		*) \
-			echo "Creating Kind cluster '$(KIND_CLUSTER)'..."; \
-			$(KIND) create cluster --name $(KIND_CLUSTER) ;; \
-	esac
+setup-test-e2e: ## Set up a Kind cluster with Harbor for e2e tests if it does not exist
+	KIND_CLUSTER=$(KIND_CLUSTER) HARBOR_NODE_PORT=$(E2E_HARBOR_NODE_PORT) HARBOR_PASSWORD=$(E2E_HARBOR_PASSWORD) ./hack/dev-up.sh
 
 .PHONY: test-e2e
 test-e2e: setup-test-e2e manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
-	KIND=$(KIND) KIND_CLUSTER=$(KIND_CLUSTER) go test -tags=e2e ./test/e2e/ -v -ginkgo.v
+	HARBOR_URL=$(E2E_HARBOR_URL) HARBOR_USERNAME=admin HARBOR_PASSWORD=$(E2E_HARBOR_PASSWORD) \
+		go test -count=1 -v -run TestIntegration ./internal/harbor/
+	KIND=$(KIND) KIND_CLUSTER=$(KIND_CLUSTER) E2E_HARBOR_URL=$(E2E_HARBOR_URL) E2E_HARBOR_PASSWORD=$(E2E_HARBOR_PASSWORD) \
+		go test -tags=e2e ./test/e2e/ -v -ginkgo.v -timeout 30m
 	$(MAKE) cleanup-test-e2e
 
 .PHONY: cleanup-test-e2e
