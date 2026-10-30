@@ -1,0 +1,15 @@
+apiVersion: harbor.satoruh.org/v1alpha1
+kind: HarborConnection
+metadata:
+  labels:
+    app.kubernetes.io/name: harbor-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: harborconnection-sample
+spec:
+  baseURL: https://harbor.example.internal
+  credentialsRef:
+    name: harbor-credentials
+  allowedProjects:
+    - namespace: default
+      names: ["sample-*"]
+  syncPeriod: 10m

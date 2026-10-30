@@ -1,0 +1,51 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - events.k8s.io
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - harbor.satoruh.org
+  resources:
+  - harborconnections
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - harbor.satoruh.org
+  resources:
+  - harborconnections/status
+  - harborprojects/status
+  verbs:
+  - update
+- apiGroups:
+  - harbor.satoruh.org
+  resources:
+  - harborprojects
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: manager-role
+  namespace: system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - secrets
+  verbs:
+  - get

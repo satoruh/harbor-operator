@@ -1,0 +1,14 @@
+apiVersion: harbor.satoruh.org/v1alpha1
+kind: HarborProject
+metadata:
+  labels:
+    app.kubernetes.io/name: harbor-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: harborproject-sample
+spec:
+  connectionRef:
+    name: harborconnection-sample
+  projectName: sample-project
+  public: false
+  adoptExisting: false
+  deletionPolicy: Orphan
