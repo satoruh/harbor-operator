@@ -62,6 +62,12 @@ spec:
         - /manager
         args:
           - --leader-elect
+          # Each renewal is a synchronous etcd write. Renewing every 15s instead
+          # of 2s, with a longer deadline, keeps a slow etcd from costing the
+          # leader its lease and exiting the process.
+          - --leader-elect-lease-duration=60s
+          - --leader-elect-renew-deadline=40s
+          - --leader-elect-retry-period=15s
           - --health-probe-bind-address=:8081
         image: controller:latest
         name: manager
